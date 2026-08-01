@@ -28,5 +28,26 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "."),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // React core - يُحمَّل أولاً وبسرعة
+            "react-core": ["react", "react-dom", "react-router-dom"],
+            // مكتبة PDF الضخمة - تُحمَّل فقط عند فتح ملف PDF
+            "pdf-viewer": ["react-pdf", "pdfjs-dist"],
+            // Supabase - يُحمَّل عند الدخول للمنصة فقط
+            "supabase": ["@supabase/supabase-js"],
+            // Gemini AI - يُحمَّل عند استخدام الذكاء الاصطناعي
+            "ai-sdk": ["@google/genai"],
+            // الرسوم البيانية
+            "charts": ["recharts"],
+            // أيقونات lucide
+            "icons": ["lucide-react"],
+          },
+        },
+      },
+    },
   };
 });

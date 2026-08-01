@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import {
   HashRouter,
   Routes,
@@ -10,18 +10,45 @@ import { AppProvider, useStore } from "./services/store";
 import { I18nProvider, useI18n } from "./services/i18n";
 import { UserRole, User } from "./types";
 import Layout from "./components/Layout";
-import Landing from "./pages/Landing";
-import { Login, Register, DeveloperLogin } from "./pages/Auth";
-import { StudentDashboard, SubjectFiles } from "./pages/StudentDashboard";
-import FileViewer from "./pages/FileViewer";
-import { AdminDashboard } from "./pages/AdminDashboard";
-import { AdminUsers } from "./pages/AdminUsers";
-import { AdminSettings } from "./pages/AdminSettings";
-import { AdminCodes } from "./pages/AdminCodes";
-import { AdminContent } from "./pages/AdminContent";
-import ActivityLog from "./pages/ActivityLog";
-import PostsPage from "./pages/Posts";
-import StudentToolsPage from "./pages/StudentToolsPage";
+
+// ===== Lazy Loading للصفحات - تتحمل فقط عند الحاجة =====
+const Landing = React.lazy(() => import("./pages/Landing"));
+const Login = React.lazy(() => import("./pages/Auth").then(m => ({ default: m.Login })));
+const Register = React.lazy(() => import("./pages/Auth").then(m => ({ default: m.Register })));
+const DeveloperLogin = React.lazy(() => import("./pages/Auth").then(m => ({ default: m.DeveloperLogin })));
+const StudentDashboard = React.lazy(() => import("./pages/StudentDashboard").then(m => ({ default: m.StudentDashboard })));
+const SubjectFiles = React.lazy(() => import("./pages/StudentDashboard").then(m => ({ default: m.SubjectFiles })));
+const FileViewer = React.lazy(() => import("./pages/FileViewer"));
+const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const AdminUsers = React.lazy(() => import("./pages/AdminUsers").then(m => ({ default: m.AdminUsers })));
+const AdminSettings = React.lazy(() => import("./pages/AdminSettings").then(m => ({ default: m.AdminSettings })));
+const AdminCodes = React.lazy(() => import("./pages/AdminCodes").then(m => ({ default: m.AdminCodes })));
+const AdminContent = React.lazy(() => import("./pages/AdminContent").then(m => ({ default: m.AdminContent })));
+const ActivityLog = React.lazy(() => import("./pages/ActivityLog"));
+const PostsPage = React.lazy(() => import("./pages/Posts"));
+const StudentToolsPage = React.lazy(() => import("./pages/StudentToolsPage"));
+
+// شاشة تحميل خفيفة للانتقال بين الصفحات
+const PageLoader: React.FC = () => (
+  <div style={{
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "60vh",
+    flexDirection: "column",
+    gap: "16px",
+  }}>
+    <div style={{
+      width: "40px",
+      height: "40px",
+      border: "3px solid rgba(252,163,17,0.2)",
+      borderTopColor: "#fca311",
+      borderRadius: "50%",
+      animation: "spin 0.7s linear infinite",
+    }} />
+    <p style={{ color: "#a0aec0", fontFamily: "Cairo", fontSize: "13px" }}>جاري التحميل...</p>
+  </div>
+);
 import {
   Settings as SettingsIcon,
   User as UserIcon,
@@ -611,58 +638,64 @@ const AppContent: React.FC = () => {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/developer-login" element={<DeveloperLogin />} />
-      <Route path="/register" element={<Register />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/developer-login" element={<DeveloperLogin />} />
+        <Route path="/register" element={<Register />} />
 
-      {/* Student Routes */}
-      <Route
-        path="/student/*"
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.STUDENT]}>
-            <Layout>
-              <Routes>
-                <Route path="" element={<StudentDashboard />} />
-                <Route path="subject/:id" element={<SubjectFiles />} />
-                <Route path="file/:id" element={<FileViewer />} />
-                <Route path="profile" element={<UserProfile />} />
-                <Route path="display" element={<DisplaySettingsPage />} />
-                <Route path="posts" element={<PostsPage />} />
-                <Route path="tools" element={<StudentToolsPage />} />
-                <Route path="courses" element={<StudentDashboard />} />
-              </Routes>
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+        {/* Student Routes */}
+        <Route
+          path="/student/*"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.STUDENT]}>
+              <Layout>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="" element={<StudentDashboard />} />
+                    <Route path="subject/:id" element={<SubjectFiles />} />
+                    <Route path="file/:id" element={<FileViewer />} />
+                    <Route path="profile" element={<UserProfile />} />
+                    <Route path="display" element={<DisplaySettingsPage />} />
+                    <Route path="posts" element={<PostsPage />} />
+                    <Route path="tools" element={<StudentToolsPage />} />
+                    <Route path="courses" element={<StudentDashboard />} />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Admin/Sub-Admin Routes */}
-      <Route
-        path="/admin/*"
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUB_ADMIN]}>
-            <Layout>
-              <Routes>
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="content" element={<AdminContent />} />
-                <Route path="file/:id" element={<FileViewer />} />
-                <Route path="codes" element={<AdminCodes />} />
-                <Route path="settings" element={<AdminSettings />} />
-                <Route path="activity" element={<ActivityLog />} />
-                <Route path="profile" element={<UserProfile />} />
-                <Route path="display" element={<DisplaySettingsPage />} />
-                <Route path="posts" element={<PostsPage />} />
-              </Routes>
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+        {/* Admin/Sub-Admin Routes */}
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUB_ADMIN]}>
+              <Layout>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="content" element={<AdminContent />} />
+                    <Route path="file/:id" element={<FileViewer />} />
+                    <Route path="codes" element={<AdminCodes />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                    <Route path="activity" element={<ActivityLog />} />
+                    <Route path="profile" element={<UserProfile />} />
+                    <Route path="display" element={<DisplaySettingsPage />} />
+                    <Route path="posts" element={<PostsPage />} />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 
